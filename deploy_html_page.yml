@@ -1,0 +1,52 @@
+---
+- name: Deploy HTML page to Apache
+  hosts: webservers
+  become: yes
+
+  vars:
+    repo_url: "https://github.com/emiCov/ansible-test"
+    dest_dir: "/var/www/html"
+    temp_dir: "/tmp/webrepo"
+    html_file: "index.html"
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install required packages (Apache, Git)
+      apt:
+        name:
+          - apache2
+          - git
+        state: present
+
+    - name: Clone GitHub repository
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ temp_dir }}"
+        force: yes
+
+    - name: Copy HTML files to web server root
+      copy:
+        src: "{{ temp_dir }}/{{ html_file }}"
+        dest: "{{ dest_dir }}/index.html"
+        remote_src: yes
+        owner: www-data
+        group: www-data
+        mode: '0644'
+
+    - name: Ensure Apache service is running
+      service:
+        name: apache2
+        state: started
+        enabled: yes
+
+    - name: Remove temporary files
+      file:
+        path: "{{ temp_dir }}"
+        state: absent
+
+    - name: Print deployment success message
+      debug:
+        msg: "Web page successfully deployed at http://localhost/index.html"
